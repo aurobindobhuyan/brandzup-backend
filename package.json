@@ -1,0 +1,24 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "A Brand management tool",
+  "private": true,
+  "author": "Aurobindo Bhuyan",
+  "type": "module",
+  "scripts": {
+    "dev:gateway": "npm run dev -w api-gateway",
+    "dev:user": "npm run dev -w user-service"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages"
+  ],
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "zod": "^4.5.4"
+  }
+}

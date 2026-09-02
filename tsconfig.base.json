@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    /* Language */
+    "target": "ES2022",
+
+    /* Type safety */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* Modules */
+    "module": "es2022",
+    "moduleResolution": "bundler",
+    // "verbatimModuleSyntax": true,
+
+    /* Interop */
+    "esModuleInterop": true,
+
+    /* Build */
+    "sourceMap": true,
+
+    /* Performance */
+    "skipLibCheck": true,
+
+    /* Consistency */
+    "forceConsistentCasingInFileNames": true
+  }
+}
