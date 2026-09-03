@@ -1,16 +1,22 @@
 import { NextFunction, Request, Response } from "express";
-import { asyncErrorHandler, OperationalError } from "packages";
+import {
+  asyncErrorHandler,
+  GATEWAY_HEADER_USER_ID,
+  GATEWAY_TOKEN_HEADER,
+  OperationalError,
+} from "packages";
 
 import { isPublic } from "@src/auth/publicRoutes";
 import { getUserSession } from "@src/utils/redis";
+import { createGatewayToken } from "@src/utils/gatewayToken";
 
 export const authGate = asyncErrorHandler(
   async (req: Request, _res: Response, next: NextFunction) => {
-    delete req.headers["x-user-id"];
+    // Drop anything a client tried to spoof before we sign the request.
+    delete req.headers[GATEWAY_HEADER_USER_ID];
+    delete req.headers[GATEWAY_TOKEN_HEADER];
 
-    // This gate is mounted on "/user", so req.path is stripped of that prefix.
-    // PUBLIC_ROUTES is declared with full paths, so rebuild the full one.
-    // baseUrl is "" when mounted globally, so this works either way.
+    req.headers[GATEWAY_TOKEN_HEADER] = createGatewayToken();
     const path = req.baseUrl + req.path;
 
     if (isPublic(req.method, path)) return next();
@@ -27,7 +33,7 @@ export const authGate = asyncErrorHandler(
       throw new OperationalError(401, "Session expired");
     }
 
-    req.headers["x-user-id"] = session.userId;
+    req.headers[GATEWAY_HEADER_USER_ID] = session.userId;
 
     return next();
   },

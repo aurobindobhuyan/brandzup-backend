@@ -9,6 +9,8 @@ import { rateLimit } from "express-rate-limit";
 import { createProxyMiddleware } from "http-proxy-middleware";
 
 import {
+  GATEWAY_HEADER_USER_ID,
+  GATEWAY_TOKEN_HEADER,
   GlobalErrorHanlder,
   logger,
   requestLogger,
@@ -60,10 +62,15 @@ app.use(
     pathRewrite: (path) => `/user${path}`,
     on: {
       proxyReq: (proxyReq, req) => {
-        const userId = req.headers["x-user-id"];
+        const userId = req.headers[GATEWAY_HEADER_USER_ID];
+        const gatewayToken = req.headers[GATEWAY_TOKEN_HEADER];
 
         if (userId) {
-          proxyReq.setHeader("x-user-id", userId);
+          proxyReq.setHeader(GATEWAY_HEADER_USER_ID, userId);
+        }
+
+        if (gatewayToken) {
+          proxyReq.setHeader(GATEWAY_TOKEN_HEADER, gatewayToken);
         }
       },
     },

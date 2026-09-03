@@ -8,6 +8,10 @@ import {
   setSessionCookie,
   storeUserSession,
 } from "@src/utils/redis";
+import {
+  createGatewayToken,
+  GATEWAY_TOKEN_HEADER,
+} from "@src/utils/gatewayToken";
 
 export const login = asyncErrorHandler(async (req: Request, res: Response) => {
   const { email, password } = req.body ?? {};
@@ -16,7 +20,10 @@ export const login = asyncErrorHandler(async (req: Request, res: Response) => {
     `${process.env.USER_SERVICE_URL}/internal/login`,
     {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        [GATEWAY_TOKEN_HEADER]: createGatewayToken(),
+      },
       body: JSON.stringify({ email, password }),
     },
   );

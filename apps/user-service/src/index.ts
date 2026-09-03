@@ -10,6 +10,7 @@ import {
   logger,
   requestLogger,
   RouteNotFound,
+  verifyGatewayToken,
 } from "packages";
 
 const PORT = process.env.USER_SERVICE_PORT;
@@ -17,6 +18,7 @@ const PORT = process.env.USER_SERVICE_PORT;
 const app = express();
 
 app.use(express.json());
+app.use(verifyGatewayToken);
 app.use(requestLogger);
 
 connectDB();

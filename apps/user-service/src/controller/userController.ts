@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { asyncErrorHandler, OperationalError, successResponse } from "packages";
+import { asyncErrorHandler, GATEWAY_HEADER_USER_ID, OperationalError, successResponse } from "packages";
 
 import * as services from "./services";
 
@@ -27,7 +27,7 @@ export const register = asyncErrorHandler(
 );
 
 export const me = asyncErrorHandler(async (req: Request, res: Response) => {
-  const userId = req.headers["x-user-id"] as string;
+  const userId = req.headers[GATEWAY_HEADER_USER_ID] as string;
 
   if (!userId) {
     throw new OperationalError(401, "Not authenticated");

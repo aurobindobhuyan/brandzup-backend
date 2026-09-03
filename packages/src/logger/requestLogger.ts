@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { logger } from "./logger";
+import { GATEWAY_HEADER_USER_ID } from "../constant";
 
 function levelForStatus(status: number): "critical" | "error" | "warn" | "info" {
   if (status >= 500) return "critical";
@@ -16,7 +17,7 @@ export function requestLogger(req: Request, res: Response, next: NextFunction) {
     const status = res.statusCode;
 
     const userId =
-      (req as any).user?.id ?? (req as any).userId ?? req.headers["x-user-id"] ?? "unknown";
+      (req as any).user?.id ?? (req as any).userId ?? req.headers[GATEWAY_HEADER_USER_ID] ?? "unknown";
 
     const meta = {
       method: req.method,
