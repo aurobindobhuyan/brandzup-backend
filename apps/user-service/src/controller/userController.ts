@@ -1,47 +1,12 @@
-import { randomUUID } from "node:crypto";
 import { Request, Response } from "express";
-import { asyncErrorHandler, successResponse } from "packages";
+import { asyncErrorHandler, OperationalError, successResponse } from "packages";
 
 import * as services from "./services";
-import {
-  removeUserSession,
-  storeUserSession,
-  UserToken,
-} from "@src/utils/redis";
-
-const setSession = async ({
-  res,
-  deviceId,
-  metaData,
-  ttl = 60 * 60, // default to 1hr
-}: {
-  res: Response;
-  deviceId: string;
-  metaData: UserToken;
-  ttl?: number;
-}) => {
-  await storeUserSession({ deviceId, metaData, ttl });
-
-  const isProduction = process.env.ENVIRONMENT === "production";
-
-  res.cookie("deviceId", deviceId, {
-    maxAge: ttl * 1000,
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "none" : "lax",
-  });
-};
 
 export const login = asyncErrorHandler(async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   const data = await services.login({ email, password });
-
-  const metaData = { userId: data._id };
-
-  const deviceId = randomUUID();
-
-  await setSession({ res, deviceId, metaData });
 
   return successResponse(res, data);
 });
@@ -61,16 +26,14 @@ export const register = asyncErrorHandler(
   },
 );
 
-export const logout = asyncErrorHandler(async (req: Request, res: Response) => {
-  const { deviceId } = req.cookies;
+export const me = asyncErrorHandler(async (req: Request, res: Response) => {
+  const userId = req.headers["x-user-id"] as string;
 
-  if (deviceId) {
-    await removeUserSession(deviceId);
+  if (!userId) {
+    throw new OperationalError(401, "Not authenticated");
   }
 
-  res.clearCookie("deviceId");
+  const data = await services.getUserById(userId);
 
-  return successResponse(res, {
-    message: "Logged out successfully",
-  });
+  return successResponse(res, data);
 });

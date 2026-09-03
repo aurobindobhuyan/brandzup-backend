@@ -1,7 +1,6 @@
-import { resolve } from "node:path";
+import "@src/config/env";
 
 import express, { Request, Response } from "express";
-import { config } from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
@@ -17,10 +16,10 @@ import {
   successResponse,
 } from "packages";
 
-const app = express();
+import { authGate } from "@src/middleware/authGate";
+import * as authController from "@src/controller/authController";
 
-config({ path: resolve(".env"), override: true });
-config({ path: resolve("../../.env"), override: true });
+const app = express();
 
 app.use(helmet());
 app.use(cookieParser());
@@ -38,22 +37,36 @@ app.use(requestLogger);
 const PORT = process.env.API_GATEWAY;
 const USER_SERVICE_URL = process.env.USER_SERVICE_URL!;
 
-const limiter = rateLimit({
+const rateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   limit: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes).
   standardHeaders: true, // draft-6: `RateLimit-*` headers; draft-7 & draft-8: combined `RateLimit` header
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers.
 });
 
-app.use(limiter);
+app.use(rateLimiter);
+
+// These 2 routes lives in gateway for instant check.
+app.post("/user/login", express.json(), authController.login);
+app.post("/user/logout", authController.logout);
 
 // User Proxy from *9000 -> *9001
 app.use(
   "/user",
+  authGate,
   createProxyMiddleware<Request, Response>({
     target: USER_SERVICE_URL,
     changeOrigin: true,
     pathRewrite: (path) => `/user${path}`,
+    on: {
+      proxyReq: (proxyReq, req) => {
+        const userId = req.headers["x-user-id"];
+
+        if (userId) {
+          proxyReq.setHeader("x-user-id", userId);
+        }
+      },
+    },
   }),
 );
 
