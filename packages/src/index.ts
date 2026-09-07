@@ -13,4 +13,10 @@ export { ROLE_PERMISSIONS, USER_ROLE, IUserType } from "./roles/roles";
 
 export { verifyGatewayToken } from "./validation/verifyGatewayToken";
 
-export { GATEWAY_HEADER_USER_ID, GATEWAY_TOKEN_HEADER } from "./constant";
+export {
+  GATEWAY_HEADER_USER_ID,
+  GATEWAY_TOKEN_HEADER,
+  GATEWAY_HEADER_WORKSPACE_ID,
+} from "./constant";
+
+export { createNanoId } from "./utility/nanoId";

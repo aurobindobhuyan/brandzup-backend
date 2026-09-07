@@ -1,16 +1,13 @@
 import "@src/config/env";
 
-import express, { Request, Response } from "express";
+import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import compression from "compression";
 import { rateLimit } from "express-rate-limit";
-import { createProxyMiddleware } from "http-proxy-middleware";
 
 import {
-  GATEWAY_HEADER_USER_ID,
-  GATEWAY_TOKEN_HEADER,
   GlobalErrorHanlder,
   logger,
   requestLogger,
@@ -18,8 +15,8 @@ import {
   successResponse,
 } from "packages";
 
-import { authGate } from "@src/middleware/authGate";
 import * as authController from "@src/controller/authController";
+import forwardProxy from "./proxies";
 
 const app = express();
 
@@ -37,7 +34,6 @@ app.use(
 app.use(requestLogger);
 
 const PORT = process.env.API_GATEWAY;
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL!;
 
 const rateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -52,30 +48,7 @@ app.use(rateLimiter);
 app.post("/user/login", express.json(), authController.login);
 app.post("/user/logout", authController.logout);
 
-// User Proxy from *9000 -> *9001
-app.use(
-  "/user",
-  authGate,
-  createProxyMiddleware<Request, Response>({
-    target: USER_SERVICE_URL,
-    changeOrigin: true,
-    pathRewrite: (path) => `/user${path}`,
-    on: {
-      proxyReq: (proxyReq, req) => {
-        const userId = req.headers[GATEWAY_HEADER_USER_ID];
-        const gatewayToken = req.headers[GATEWAY_TOKEN_HEADER];
-
-        if (userId) {
-          proxyReq.setHeader(GATEWAY_HEADER_USER_ID, userId);
-        }
-
-        if (gatewayToken) {
-          proxyReq.setHeader(GATEWAY_TOKEN_HEADER, gatewayToken);
-        }
-      },
-    },
-  }),
-);
+forwardProxy(app);
 
 app.use("/api-gateway/health", (_req, res) => {
   return successResponse(res, "Working fine");

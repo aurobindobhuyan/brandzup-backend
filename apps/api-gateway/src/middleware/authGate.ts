@@ -16,6 +16,8 @@ export const authGate = asyncErrorHandler(
     delete req.headers[GATEWAY_HEADER_USER_ID];
     delete req.headers[GATEWAY_TOKEN_HEADER];
 
+    console.log(req.hostname);
+
     req.headers[GATEWAY_TOKEN_HEADER] = createGatewayToken();
     const path = req.baseUrl + req.path;
 

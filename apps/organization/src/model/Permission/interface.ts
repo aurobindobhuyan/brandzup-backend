@@ -31,7 +31,7 @@ export interface IGuidelineAccess extends IEntityAccess {
 
 export interface IPermission {
   userId: Types.ObjectId;
-  workspaceId: Types.ObjectId;
+  workspaceNanoId: string;
 
   access: {
     fullWorkspaceAccess?: boolean;

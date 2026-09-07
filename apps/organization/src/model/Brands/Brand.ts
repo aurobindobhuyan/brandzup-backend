@@ -4,6 +4,7 @@ import * as interfaces from "./interface";
 const brandSchema = new Schema<interfaces.IBrand>(
   {
     workspaceId: { type: Types.ObjectId, ref: "Workspace", required: true },
+    workspaceNanoId: { type: String, required: true },
 
     name: { type: String, required: true },
     logo: { type: String, required: false },

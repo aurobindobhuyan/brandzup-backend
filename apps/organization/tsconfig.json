@@ -8,6 +8,7 @@
       "@src/*": ["./src/*"],
       "@config/*": ["./src/config/*"],
       "@routes/*": ["./src/routes/*"],
+      "@controller/*": ["./src/controllers/*"],
     }
   },
 

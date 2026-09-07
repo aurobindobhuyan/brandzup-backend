@@ -7,7 +7,8 @@
   "type": "module",
   "scripts": {
     "dev:gateway": "npm run dev -w api-gateway",
-    "dev:user": "npm run dev -w user-service"
+    "dev:user": "npm run dev -w user-service",
+    "dev:organization": "npm run dev -w organization"
   },
   "workspaces": [
     "apps/*",

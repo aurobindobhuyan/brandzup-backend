@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { Request, Response } from "express";
-import { asyncErrorHandler, OperationalError, successResponse } from "packages";
+import {
+  asyncErrorHandler,
+  GATEWAY_TOKEN_HEADER,
+  OperationalError,
+  successResponse,
+} from "packages";
 
 import {
   clearSessionCookie,
@@ -8,10 +13,7 @@ import {
   setSessionCookie,
   storeUserSession,
 } from "@src/utils/redis";
-import {
-  createGatewayToken,
-  GATEWAY_TOKEN_HEADER,
-} from "@src/utils/gatewayToken";
+import { createGatewayToken } from "@src/utils/gatewayToken";
 
 export const login = asyncErrorHandler(async (req: Request, res: Response) => {
   const { email, password } = req.body ?? {};
