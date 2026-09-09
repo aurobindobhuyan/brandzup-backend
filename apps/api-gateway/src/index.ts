@@ -49,6 +49,7 @@ app.post("/user/login", express.json(), authController.login);
 app.post("/user/logout", authController.logout);
 
 forwardProxy(app);
+app.use(express.json());
 
 app.use("/api-gateway/health", (_req, res) => {
   return successResponse(res, "Working fine");

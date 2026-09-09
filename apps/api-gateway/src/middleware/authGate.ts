@@ -1,7 +1,9 @@
 import { NextFunction, Request, Response } from "express";
 import {
   asyncErrorHandler,
+  GATEWAY_HEADER_PERMISSION,
   GATEWAY_HEADER_USER_ID,
+  GATEWAY_HEADER_WORKSPACE_ID,
   GATEWAY_TOKEN_HEADER,
   OperationalError,
 } from "packages";
@@ -16,8 +18,6 @@ export const authGate = asyncErrorHandler(
     delete req.headers[GATEWAY_HEADER_USER_ID];
     delete req.headers[GATEWAY_TOKEN_HEADER];
 
-    console.log(req.hostname);
-
     req.headers[GATEWAY_TOKEN_HEADER] = createGatewayToken();
     const path = req.baseUrl + req.path;
 
@@ -31,11 +31,22 @@ export const authGate = asyncErrorHandler(
 
     const session = await getUserSession(deviceId);
 
-    if (!session) {
+    if (!session || !session.userId) {
       throw new OperationalError(401, "Session expired");
     }
 
     req.headers[GATEWAY_HEADER_USER_ID] = session.userId;
+
+    if (session[GATEWAY_HEADER_WORKSPACE_ID]) {
+      req.headers[GATEWAY_HEADER_WORKSPACE_ID] =
+        session[GATEWAY_HEADER_WORKSPACE_ID];
+    }
+
+    if (session[GATEWAY_HEADER_PERMISSION]) {
+      req.headers[GATEWAY_HEADER_PERMISSION] = JSON.stringify(
+        session[GATEWAY_HEADER_PERMISSION],
+      );
+    }
 
     return next();
   },

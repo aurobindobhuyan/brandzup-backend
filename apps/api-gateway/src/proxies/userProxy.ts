@@ -10,15 +10,19 @@ export const userProxy = createProxyMiddleware<Request, Response>({
   pathRewrite: (path) => `/user${path}`,
   on: {
     proxyReq: (proxyReq, req) => {
-      proxyReq.setHeader(
-        GATEWAY_HEADER_USER_ID,
-        req.headers[GATEWAY_HEADER_USER_ID!] as string,
-      );
+      if (req.headers[GATEWAY_HEADER_USER_ID]) {
+        proxyReq.setHeader(
+          GATEWAY_HEADER_USER_ID,
+          req.headers[GATEWAY_HEADER_USER_ID] as string,
+        );
+      }
 
-      proxyReq.setHeader(
-        GATEWAY_TOKEN_HEADER,
-        req.headers[GATEWAY_TOKEN_HEADER!] as string,
-      );
+      if (req.headers[GATEWAY_TOKEN_HEADER]) {
+        proxyReq.setHeader(
+          GATEWAY_TOKEN_HEADER,
+          req.headers[GATEWAY_TOKEN_HEADER!] as string,
+        );
+      }
     },
   },
 });

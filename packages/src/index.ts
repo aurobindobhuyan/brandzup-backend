@@ -17,6 +17,7 @@ export {
   GATEWAY_HEADER_USER_ID,
   GATEWAY_TOKEN_HEADER,
   GATEWAY_HEADER_WORKSPACE_ID,
+  GATEWAY_HEADER_PERMISSION
 } from "./constant";
 
 export { createNanoId } from "./utility/nanoId";

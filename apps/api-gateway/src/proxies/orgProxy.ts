@@ -1,13 +1,17 @@
 import { Request, Response } from "express";
-import { createProxyMiddleware } from "http-proxy-middleware";
-import { GATEWAY_HEADER_USER_ID, GATEWAY_TOKEN_HEADER } from "packages";
+import { createProxyMiddleware, fixRequestBody } from "http-proxy-middleware";
+import {
+  GATEWAY_HEADER_PERMISSION,
+  GATEWAY_HEADER_USER_ID,
+  GATEWAY_HEADER_WORKSPACE_ID,
+  GATEWAY_TOKEN_HEADER,
+} from "packages";
 
 const ORG_SERVICE_URL = process.env.ORG_SERVICE_URL!;
 
-export const userProxy = createProxyMiddleware<Request, Response>({
+export const orgProxy = createProxyMiddleware<Request, Response>({
   target: ORG_SERVICE_URL,
   changeOrigin: true,
-  pathRewrite: (path) => `/org${path}`,
   on: {
     proxyReq: (proxyReq, req) => {
       proxyReq.setHeader(
@@ -19,6 +23,20 @@ export const userProxy = createProxyMiddleware<Request, Response>({
         GATEWAY_TOKEN_HEADER,
         req.headers[GATEWAY_TOKEN_HEADER!] as string,
       );
+
+      if (req.headers[GATEWAY_HEADER_WORKSPACE_ID]) {
+        proxyReq.setHeader(
+          GATEWAY_HEADER_WORKSPACE_ID,
+          req.headers[GATEWAY_HEADER_WORKSPACE_ID] as string,
+        );
+      }
+
+      if (req.headers[GATEWAY_HEADER_PERMISSION]) {
+        proxyReq.setHeader(
+          GATEWAY_HEADER_PERMISSION,
+          req.headers[GATEWAY_HEADER_PERMISSION] as string,
+        );
+      }
     },
   },
 });

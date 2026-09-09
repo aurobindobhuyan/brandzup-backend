@@ -4,10 +4,15 @@ import { Types } from "mongoose";
 import Permission from "@src/model/Permission/Permission";
 import Workspace from "@src/model/Workspace/Workspace";
 import { IInviteStatusKind } from "@src/model/Permission/interface";
+import { IWorkspace } from "@src/model/Workspace/interface";
 
 import { createNanoId, errorResponse, IUserType } from "packages";
 
 import { createPermission } from "../permission/service";
+
+const getPublicWorkspace = (workspace: IWorkspace & { _id: string }) => {
+  const { name, nanoId, description, ownerId, logo } = workspace;
+};
 
 export const listAllWorkspaces = async ({
   res,
@@ -16,7 +21,11 @@ export const listAllWorkspaces = async ({
   res: Response;
   userId: string;
 }) => {
-  const findAllPermissions = await Permission.find({ userId }).lean().exec();
+  const findAllPermissions = await Permission.find({ userId })
+    .select("userId workspaceNanoId invite")
+    .populate("workspaceNanoId", "name, nanoId, description, ownerId, logo")
+    .lean()
+    .exec();
 
   if (!findAllPermissions) {
     errorResponse(res, "Couldn't resolve your reqeust");
@@ -81,9 +90,7 @@ export const getWorkspace = async ({
   res: Response;
   nanoId: string;
 }) => {
-  const findWorkspace = await Workspace.findOne({ nanoId })
-    .lean()
-    .exec();
+  const findWorkspace = await Workspace.findOne({ nanoId }).lean().exec();
 
   if (!findWorkspace) {
     errorResponse(res, "Wrokspace not found");

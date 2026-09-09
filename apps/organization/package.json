@@ -4,7 +4,7 @@
   "main": "./src/index.ts",
   "type": "module",
   "scripts": {
-    "dev": "tsc watch --clear-screen=false ./src/index.ts ",
+    "dev": "tsx watch --clear-screen=false src/index.ts",
     "build": "tsc",
     "start": "node dist/src/index.js"
   },

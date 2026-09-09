@@ -29,10 +29,6 @@ export const register = asyncErrorHandler(
 export const me = asyncErrorHandler(async (req: Request, res: Response) => {
   const userId = req.headers[GATEWAY_HEADER_USER_ID] as string;
 
-  if (!userId) {
-    throw new OperationalError(401, "Not authenticated");
-  }
-
   const data = await services.getUserById(userId);
 
   return successResponse(res, data);
