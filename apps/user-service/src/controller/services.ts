@@ -72,13 +72,3 @@ export const register = async ({
 
   return getPublicUser(newUser);
 };
-
-export const getUserById = async (userId: string) => {
-  const user = await User.findById(userId).lean().exec();
-
-  if (!user) {
-    throw new OperationalError(404, "User not found");
-  }
-
-  return getPublicUser(user);
-};

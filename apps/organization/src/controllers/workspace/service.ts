@@ -10,8 +10,10 @@ import { createNanoId, errorResponse, IUserType } from "packages";
 
 import { createPermission } from "../permission/service";
 
-const getPublicWorkspace = (workspace: IWorkspace & { _id: string }) => {
+const getPublicWorkspace = (workspace: IWorkspace) => {
   const { name, nanoId, description, ownerId, logo } = workspace;
+
+  return { name, nanoId, description, ownerId, logo };
 };
 
 export const listAllWorkspaces = async ({
@@ -22,8 +24,10 @@ export const listAllWorkspaces = async ({
   userId: string;
 }) => {
   const findAllPermissions = await Permission.find({ userId })
-    .select("userId workspaceNanoId invite")
-    .populate("workspaceNanoId", "name, nanoId, description, ownerId, logo")
+    .select("userId workspaceId invite")
+    .populate<{
+      workspaceId: IWorkspace;
+    }>("workspaceId", "name nanoId description ownerId logo")
     .lean()
     .exec();
 
@@ -31,7 +35,15 @@ export const listAllWorkspaces = async ({
     errorResponse(res, "Couldn't resolve your reqeust");
   }
 
-  return findAllPermissions;
+  const workspaces = findAllPermissions.map((ele) => {
+    return {
+      workspace: getPublicWorkspace(ele.workspaceId),
+      invite: ele.invite,
+      userId: ele.userId,
+    };
+  });
+
+  return workspaces;
 };
 
 export const createWorkspace = async ({
@@ -66,6 +78,7 @@ export const createWorkspace = async ({
     res,
     permission: {
       userId: new Types.ObjectId(userId),
+      workspaceId: workspace._id,
       workspaceNanoId: workspace.nanoId,
 
       access: {
@@ -96,5 +109,5 @@ export const getWorkspace = async ({
     errorResponse(res, "Wrokspace not found");
   }
 
-  return findWorkspace;
+  return getPublicWorkspace(findWorkspace!);
 };

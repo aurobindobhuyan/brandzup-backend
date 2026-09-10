@@ -25,11 +25,3 @@ export const register = asyncErrorHandler(
     return successResponse(res, data);
   },
 );
-
-export const me = asyncErrorHandler(async (req: Request, res: Response) => {
-  const userId = req.headers[GATEWAY_HEADER_USER_ID] as string;
-
-  const data = await services.getUserById(userId);
-
-  return successResponse(res, data);
-});

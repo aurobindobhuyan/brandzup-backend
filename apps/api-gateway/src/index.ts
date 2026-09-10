@@ -46,6 +46,7 @@ app.use(rateLimiter);
 
 // These 2 routes lives in gateway for instant check.
 app.post("/user/login", express.json(), authController.login);
+app.get("/user/me", express.json(), authController.me);
 app.post("/user/logout", authController.logout);
 
 forwardProxy(app);

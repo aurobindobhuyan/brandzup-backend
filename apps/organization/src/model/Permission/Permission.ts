@@ -9,6 +9,7 @@ export const permissionSchema = new Schema<interfaces.IPermission>({
     ref: "User",
     required: true,
   },
+  workspaceId: { type: Types.ObjectId, ref: "Workspace", required: true },
   workspaceNanoId: { type: String, required: true },
 
   access: {

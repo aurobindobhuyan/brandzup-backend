@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Request, Response } from "express";
 import {
   asyncErrorHandler,
+  errorResponse,
   GATEWAY_TOKEN_HEADER,
   OperationalError,
   successResponse,
@@ -9,6 +10,7 @@ import {
 
 import {
   clearSessionCookie,
+  getUserSession,
   removeUserSession,
   setSessionCookie,
   storeUserSession,
@@ -48,6 +50,29 @@ export const login = asyncErrorHandler(async (req: Request, res: Response) => {
   setSessionCookie(res, deviceId);
 
   return successResponse(res, user);
+});
+
+export const me = asyncErrorHandler(async (req: Request, res: Response) => {
+  const session = await getUserSession(req.cookies.deviceId);
+
+  if (session === null) {
+    return errorResponse(res, "Session Expired", 401);
+  }
+
+  const { userId } = session;
+  let workspaceId = null;
+  let permission = null;
+
+  if (session["x-workspace-nano-id"]) {
+    workspaceId = session["x-workspace-nano-id"];
+    permission = session["x-workspace-permission"];
+  }
+
+  return successResponse(res, {
+    userId,
+    workspaceId,
+    permission,
+  });
 });
 
 export const logout = asyncErrorHandler(async (req: Request, res: Response) => {
