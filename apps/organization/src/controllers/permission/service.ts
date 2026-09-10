@@ -1,4 +1,4 @@
-import { IPermission } from "@src/model/Permission/interface";
+import { IInviteStatusKind, IPermission } from "@src/model/Permission/interface";
 import Permission from "@src/model/Permission/Permission";
 import { Response } from "express";
 import { errorResponse } from "packages";
@@ -30,4 +30,28 @@ export const createPermission = async ({
   });
 
   return permission;
+};
+
+/**
+ * The permission that lets the user enter the workspace right now: not
+ * deleted and with an invite that has been accepted or was never needed.
+ * Returns null when the user has no usable access.
+ */
+export const getActivePermission = async ({
+  userId,
+  workspaceNanoId,
+}: {
+  userId: string;
+  workspaceNanoId: string;
+}) => {
+  return Permission.findOne({
+    userId,
+    workspaceNanoId,
+    isDeleted: false,
+    "invite.status": {
+      $in: [IInviteStatusKind.accepted, IInviteStatusKind.notRequired],
+    },
+  })
+    .lean()
+    .exec();
 };

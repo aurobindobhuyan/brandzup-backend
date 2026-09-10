@@ -9,13 +9,15 @@ import {
 } from "packages";
 
 import { isPublic } from "@src/auth/publicRoutes";
-import { getUserSession } from "@src/utils/redis";
+import { resolveSession } from "@src/auth/resolveSession";
 import { createGatewayToken } from "@src/utils/gatewayToken";
 
 export const authGate = asyncErrorHandler(
-  async (req: Request, _res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     // Drop anything a client tried to spoof before we sign the request.
     delete req.headers[GATEWAY_HEADER_USER_ID];
+    delete req.headers[GATEWAY_HEADER_WORKSPACE_ID];
+    delete req.headers[GATEWAY_HEADER_PERMISSION];
     delete req.headers[GATEWAY_TOKEN_HEADER];
 
     req.headers[GATEWAY_TOKEN_HEADER] = createGatewayToken();
@@ -23,28 +25,21 @@ export const authGate = asyncErrorHandler(
 
     if (isPublic(req.method, path)) return next();
 
-    const deviceId = req.cookies?.deviceId;
+    const session = await resolveSession(req, res);
 
-    if (!deviceId) {
+    if (!session) {
       throw new OperationalError(401, "Not authenticated");
-    }
-
-    const session = await getUserSession(deviceId);
-
-    if (!session || !session.userId) {
-      throw new OperationalError(401, "Session expired");
     }
 
     req.headers[GATEWAY_HEADER_USER_ID] = session.userId;
 
-    if (session[GATEWAY_HEADER_WORKSPACE_ID]) {
-      req.headers[GATEWAY_HEADER_WORKSPACE_ID] =
-        session[GATEWAY_HEADER_WORKSPACE_ID];
+    if (session.workspaceId) {
+      req.headers[GATEWAY_HEADER_WORKSPACE_ID] = session.workspaceId;
     }
 
-    if (session[GATEWAY_HEADER_PERMISSION]) {
+    if (session.permission) {
       req.headers[GATEWAY_HEADER_PERMISSION] = JSON.stringify(
-        session[GATEWAY_HEADER_PERMISSION],
+        session.permission,
       );
     }
 

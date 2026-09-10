@@ -16,6 +16,7 @@ import {
 } from "packages";
 
 import * as authController from "@src/controller/authController";
+import { isTrustedOrigin } from "@src/auth/origins";
 import forwardProxy from "./proxies";
 
 const app = express();
@@ -27,7 +28,11 @@ app.use(
   cors({
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    origin: "http://localhost:3000",
+    // The root app plus every workspace origin. Requests without an Origin
+    // header (server-to-server, curl) are not subject to CORS at all.
+    origin: (origin, callback) => {
+      callback(null, !origin || isTrustedOrigin(origin));
+    },
   }),
 );
 
@@ -44,10 +49,14 @@ const rateLimiter = rateLimit({
 
 app.use(rateLimiter);
 
-// These 2 routes lives in gateway for instant check.
+// These routes live in the gateway because they own the session store.
 app.post("/user/login", express.json(), authController.login);
 app.get("/user/me", express.json(), authController.me);
 app.post("/user/logout", authController.logout);
+
+// Workspace handoff: root origin asks for a token, workspace origin redeems it.
+app.post("/select-workspace", express.json(), authController.selectWorkspace);
+app.post("/auth/consume", express.json(), authController.consumeHandoff);
 
 forwardProxy(app);
 app.use(express.json());
