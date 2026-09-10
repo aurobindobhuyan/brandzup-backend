@@ -20,6 +20,6 @@ export {
   GATEWAY_HEADER_PERMISSION
 } from "./constant";
 
-export { createNanoId } from "./utility/nanoId";
+export { createNanoId, createHostSafeId } from "./utility/nanoId";
 
 export { type IInvite, type IInviteStatusKind, type IPermission } from "./utility/permission";

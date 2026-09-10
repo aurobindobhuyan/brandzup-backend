@@ -49,7 +49,11 @@ Every guarantee from the doc is preserved:
 | `POST` | `/user/logout` | — | either cookie | clears both cookies, deletes both keys |
 
 Existing `/user/login` and proxied `/user/*`, `/org/*` routes are unchanged
-in contract.
+in contract, with one addition:
+
+| Method | Path | Auth | Returns |
+|---|---|---|---|
+| `GET` | `/org/workspace/current` | either cookie | public details of the workspace the session points at (`name`, `nanoId`, `description`, `ownerId`, `logo`); `400` if no workspace is selected |
 
 ### Organization service (service-to-service only)
 
@@ -94,6 +98,13 @@ The frontend then navigates to
    once. Missing/expired/replayed → `401`.
 3. The token's `workspaceId` must equal the id from the `Origin` (a token
    minted for workspace A cannot be redeemed on workspace B's origin).
+
+   > Workspace ids become DNS labels, and **browsers lowercase hostnames**, so
+   > an id containing uppercase never survives the round trip: `kJqUAr` comes
+   > back as `company.kjquar.localhost` and fails this check. Ids are therefore
+   > minted lowercase `a-z0-9` (`createHostSafeId`), and `[a-z0-9]` is the only
+   > shape treated as a valid id. Any workspace created before that change is
+   > unreachable and must be migrated.
 4. Parent must still exist **and** its current `workspaceId` must equal the
    token's (a token from an abandoned selection cannot re-open the workspace
    the user already left).
@@ -154,10 +165,19 @@ origin.
 
 | File | Change |
 |---|---|
-| `controllers/permission/service.ts` | Added `getActivePermission({ userId, workspaceNanoId })`. |
+| `controllers/permission/service.ts` | Added `getActivePermission({ userId, workspaceNanoId })`. Fixed `createPermission`: it used `find()` (an array, always truthy) so every create reported "already a part of this workspace", and it dropped `workspaceId`, which the schema requires — creating a workspace never actually succeeded. Errors are now thrown as `OperationalError` instead of writing a response and continuing. |
 | `controllers/permission/permission.ts` | Added the `getActivePermission` handler (`403` when no active permission). |
+| `controllers/workspace/service.ts` | Errors are thrown as `OperationalError` (the previous `errorResponse` + fall-through sent two responses, and `getWorkspace` dereferenced a null). |
+| `controllers/workspace/workspace.ts` | Added `getCurrentWorkspace` (reads the workspace id from the gateway header). |
+| `routes/workspaceRoute.ts` | Added `GET /current`, registered before `/:workspaceId`. |
 | `routes/internalRoute.ts` | **New.** `GET /permission/:workspaceNanoId`. |
 | `routes/index.ts` | Mounts `/internal`. |
+
+### Shared package — `packages/src`
+
+| File | Change |
+|---|---|
+| `utility/nanoId.ts` | Added `createHostSafeId(size = 8)` — lowercase `a-z0-9` via nanoid's `customAlphabet`. Used for workspace ids because they become DNS labels; the default alphabet is mixed case with `_`/`-`, and browsers lowercase hostnames, which broke the consume step's origin check. `createNanoId` is unchanged and still used elsewhere. |
 
 ### Environment — `.env`, `.env.example`
 
@@ -186,8 +206,16 @@ All four have code defaults matching these values. Requires Redis ≥ 6.2 for
   exists per device after repeated consumes, logout removes both keys, and a
   workspace session cannot be created for a missing parent.
 
-Not yet exercised: the full browser round-trip (needs Mongo + all three
-services + a registered user and workspace).
+- An HTTP end-to-end run against the live gateway, org and user services
+  (two cookie jars standing in for the two browser origins) confirmed:
+  register → login → create workspace → list → select (unknown workspace
+  `403`) → consume (`401` on the wrong workspace origin, `403` on an untrusted
+  origin, `200` sets only `workspaceSessionId` — never `deviceId` — and a
+  replay is `401`) → `/user/me` and `/org/workspace/current` via the workspace
+  cookie → `/org/internal/*` is `404` → logout from the workspace origin clears
+  its cookie and kills the root `deviceId` session too.
+
+Not yet exercised: the same flow driven from a real browser.
 
 ---
 
@@ -210,22 +238,20 @@ services + a registered user and workspace).
 
 ## Open items / follow-ups
 
-1. **Dev cookie topology.** Every frontend origin currently calls the same
-   gateway host (`localhost:7000`), so both cookies land on `localhost` and
-   `SameSite=Lax` will not send them on cross-site `fetch` from
-   `company.<id>.localhost:3000`. Recommended fix on the frontend: derive the
-   API base URL from `window.location.hostname` so each origin talks to its own
-   hostname on port 7000. Then cookies are per-domain, exactly as the design
-   describes. `SESSION_COOKIE_DOMAIN=.localhost` in `.env` is unused and can be
-   removed — browsers reject `Domain=localhost`, and the design intentionally
-   does not share cookies across domains.
-2. **`createPermission` bug** (`organization/src/controllers/permission/service.ts`):
-   `Permission.find(...)` returns an array (always truthy), so it sends an
-   error response *and* continues to create, and the controller then responds a
-   second time. Should be `findOne` + `throw new OperationalError(...)`. This
-   will surface as soon as "Create workspace" is wired up.
-3. `validateBody` in `packages` calls `next()` twice on failure; body
+1. **Cookie topology (resolved on the frontend).** Every origin used to call
+   the same gateway host (`localhost:7000`), so both cookies landed on
+   `localhost` and `SameSite=Lax` would not send them cross-site from
+   `company.<id>.localhost:3000`. `frontend/src/utility/origin.ts` now points
+   the API at the page's own hostname whenever the configured API host equals
+   the root app host, so each origin carries its own cookie to
+   `<its host>:7000`. `SESSION_COOKIE_DOMAIN=.localhost` in `.env` is unused
+   and can be removed — browsers reject `Domain=localhost`, and the design
+   intentionally does not share cookies across domains.
+2. `validateBody` in `packages` calls `next()` twice on failure; body
    validation in the new endpoints is done inline for that reason.
-4. Session TTL is fixed at login (no sliding refresh). If a sliding window is
+3. Session TTL is fixed at login (no sliding refresh). If a sliding window is
    wanted, refresh both `deviceId:{id}` and `workspaceSession:{id}` together in
    `resolveSession`.
+4. `createWorkspace` inserts the workspace before its owner permission; if the
+   second write fails the workspace is orphaned. A Mongo transaction (or
+   deleting the workspace on failure) would close that gap.

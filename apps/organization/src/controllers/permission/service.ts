@@ -1,26 +1,28 @@
 import { IInviteStatusKind, IPermission } from "@src/model/Permission/interface";
 import Permission from "@src/model/Permission/Permission";
 import { Response } from "express";
-import { errorResponse } from "packages";
+import { OperationalError } from "packages";
 
 export const createPermission = async ({
   res,
-  permission: { userId, workspaceNanoId, access, invite },
+  permission: { userId, workspaceId, workspaceNanoId, access, invite },
 }: {
   res: Response;
   permission: IPermission;
 }) => {
-  const findPermission = await Permission.find({ userId, workspaceNanoId })
+  // findOne, not find: find() returns an array, which is truthy even when empty.
+  const findPermission = await Permission.findOne({ userId, workspaceNanoId })
     .lean()
     .exec();
 
   if (findPermission) {
-    errorResponse(res, "User is already a part of this workspace");
+    throw new OperationalError(400, "User is already a part of this workspace");
   }
 
   // Create Permission
   const permission = await Permission.create({
     userId,
+    workspaceId,
     workspaceNanoId,
 
     access,

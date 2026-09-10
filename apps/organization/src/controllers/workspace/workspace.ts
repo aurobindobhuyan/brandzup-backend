@@ -4,6 +4,7 @@ import {
   GATEWAY_HEADER_USER_ID,
   GATEWAY_HEADER_WORKSPACE_ID,
   successResponse,
+  OperationalError,
 } from "packages";
 
 import * as services from "./service";
@@ -29,6 +30,20 @@ export const createWorkspace = asyncErrorHandler(
       name,
       description,
     });
+
+    return successResponse(res, result);
+  },
+);
+
+export const getCurrentWorkspace = asyncErrorHandler(
+  async (req: Request, res: Response) => {
+    const nanoId = req.headers[GATEWAY_HEADER_WORKSPACE_ID] as string;
+
+    if (!nanoId) {
+      throw new OperationalError(400, "No workspace selected");
+    }
+
+    const result = await services.getWorkspace({ res, nanoId });
 
     return successResponse(res, result);
   },

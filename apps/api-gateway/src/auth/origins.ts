@@ -13,8 +13,10 @@ const WORKSPACE_ORIGIN_TEMPLATE =
   process.env.WORKSPACE_ORIGIN_TEMPLATE ??
   "http://company.{workspaceId}.localhost:3000";
 
-// Matches the nanoid alphabet used by createNanoId.
-const WORKSPACE_ID_PATTERN = "[A-Za-z0-9_-]{1,32}";
+// Workspace ids become DNS labels, so they are minted lowercase a-z0-9 by
+// createHostSafeId. Browsers lowercase hostnames, so anything outside this
+// set could not survive the round trip and is not a valid id.
+const WORKSPACE_ID_PATTERN = "[a-z0-9]{1,32}";
 
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

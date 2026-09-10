@@ -6,7 +6,7 @@ import Workspace from "@src/model/Workspace/Workspace";
 import { IInviteStatusKind } from "@src/model/Permission/interface";
 import { IWorkspace } from "@src/model/Workspace/interface";
 
-import { createNanoId, errorResponse, IUserType } from "packages";
+import { createHostSafeId, IUserType, OperationalError } from "packages";
 
 import { createPermission } from "../permission/service";
 
@@ -32,7 +32,7 @@ export const listAllWorkspaces = async ({
     .exec();
 
   if (!findAllPermissions) {
-    errorResponse(res, "Couldn't resolve your reqeust");
+    throw new OperationalError(500, "Couldn't resolve your request");
   }
 
   const workspaces = findAllPermissions.map((ele) => {
@@ -63,11 +63,11 @@ export const createWorkspace = async ({
     .exec();
 
   if (findExisting) {
-    errorResponse(res, "You already own a Workspace");
+    throw new OperationalError(400, "You already own a Workspace");
   }
 
   const workspace = await Workspace.create({
-    nanoId: createNanoId(),
+    nanoId: createHostSafeId(),
     ownerId: userId,
     name,
     description,
@@ -106,8 +106,8 @@ export const getWorkspace = async ({
   const findWorkspace = await Workspace.findOne({ nanoId }).lean().exec();
 
   if (!findWorkspace) {
-    errorResponse(res, "Wrokspace not found");
+    throw new OperationalError(404, "Workspace not found");
   }
 
-  return getPublicWorkspace(findWorkspace!);
+  return getPublicWorkspace(findWorkspace);
 };
