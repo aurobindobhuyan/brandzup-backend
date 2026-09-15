@@ -20,6 +20,11 @@ import forwardProxy from "./proxies";
 
 const app = express();
 
+const ALLOWED_ORIGINS = [
+  /^http:\/\/localhost:3000$/,
+  /^http:\/\/company\.[a-z0-9-]+\.localhost:3000$/,
+];
+
 app.use(helmet());
 app.use(cookieParser());
 app.use(compression());
@@ -27,7 +32,15 @@ app.use(
   cors({
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    origin: "http://localhost:3000",
+    origin(origin, callback) {
+      // No Origin header: curl, Postman, server-to-server, same-origin
+      if (!origin) return callback(null, true);
+
+      const allowed = ALLOWED_ORIGINS.some((re) => re.test(origin));
+      return allowed
+        ? callback(null, true)
+        : callback(new Error(`Not allowed by CORS: ${origin}`));
+    },
   }),
 );
 
@@ -48,6 +61,8 @@ app.use(rateLimiter);
 app.post("/user/login", express.json(), authController.login);
 app.get("/user/me", express.json(), authController.me);
 app.post("/user/logout", authController.logout);
+app.post("/select-workspace", express.json(), authController.selectWorkspace);
+app.post("/auth/consume", express.json(), authController.consumeToken);
 
 forwardProxy(app);
 app.use(express.json());

@@ -3,10 +3,15 @@ import { Types } from "mongoose";
 
 import Permission from "@src/model/Permission/Permission";
 import Workspace from "@src/model/Workspace/Workspace";
-import { IInviteStatusKind } from "@src/model/Permission/interface";
+import { IInviteStatusKind, IPermission } from "@src/model/Permission/interface";
 import { IWorkspace } from "@src/model/Workspace/interface";
 
-import { createNanoId, errorResponse, IUserType } from "packages";
+import {
+  generateWorkspaceNanoId,
+  errorResponse,
+  IUserType,
+  OperationalError,
+} from "packages";
 
 import { createPermission } from "../permission/service";
 
@@ -67,7 +72,7 @@ export const createWorkspace = async ({
   }
 
   const workspace = await Workspace.create({
-    nanoId: createNanoId(),
+    nanoId: generateWorkspaceNanoId(),
     ownerId: userId,
     name,
     description,
@@ -110,4 +115,26 @@ export const getWorkspace = async ({
   }
 
   return getPublicWorkspace(findWorkspace!);
+};
+
+export const verifyUserWorkspace = async ({
+  userId,
+  workspaceNanoId,
+}: {
+  workspaceNanoId: string;
+  userId: string;
+}) => {
+  const permission = await Permission.findOne({ userId, workspaceNanoId })
+    .lean()
+    .exec();
+
+  if (!permission) {
+    throw new OperationalError(404, "Workspace not found");
+  }
+
+  if (permission.isDeleted) {
+    throw new OperationalError(404, "You're removed from the workspace");
+  }
+
+  return permission;
 };
