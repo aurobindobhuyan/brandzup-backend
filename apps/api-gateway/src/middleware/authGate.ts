@@ -17,6 +17,8 @@ export const authGate = asyncErrorHandler(
     // Drop anything a client tried to spoof before we sign the request.
     delete req.headers[GATEWAY_HEADER_USER_ID];
     delete req.headers[GATEWAY_TOKEN_HEADER];
+    delete req.headers[GATEWAY_HEADER_WORKSPACE_ID];
+    delete req.headers[GATEWAY_HEADER_PERMISSION];
 
     req.headers[GATEWAY_TOKEN_HEADER] = createGatewayToken();
     const path = req.baseUrl + req.path;

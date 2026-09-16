@@ -1,8 +1,13 @@
-import { ObjectId } from "mongoose";
+import { Types } from "mongoose";
 
 export interface IBrand {
-  workspaceId: ObjectId;
+  createdBy: Types.ObjectId;
+  workspaceId: Types.ObjectId;
+
+  brandNanoId: string;
   workspaceNanoId: string;
   name: string;
   logo: string;
+
+  createdAt: Date;
 }

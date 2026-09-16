@@ -12,12 +12,15 @@ export { asyncErrorHandler } from "./asyncHandler/asyncHandler";
 export { ROLE_PERMISSIONS, USER_ROLE, IUserType } from "./roles/roles";
 
 export { verifyGatewayToken } from "./validation/verifyGatewayToken";
+export { requireWorkspaceId } from "./validation/workspaceGate";
 
 export {
   GATEWAY_HEADER_USER_ID,
   GATEWAY_TOKEN_HEADER,
   GATEWAY_HEADER_WORKSPACE_ID,
-  GATEWAY_HEADER_PERMISSION
+  GATEWAY_HEADER_PERMISSION,
+  getDataFromHeaders,
+  type IHeaderData,
 } from "./constant";
 
 export { createNanoId, generateWorkspaceNanoId } from "./utility/nanoId";

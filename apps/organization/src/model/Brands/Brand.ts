@@ -3,7 +3,10 @@ import * as interfaces from "./interface";
 
 const brandSchema = new Schema<interfaces.IBrand>(
   {
+    createdBy: { type: Types.ObjectId, ref: "User", required: true },
     workspaceId: { type: Types.ObjectId, ref: "Workspace", required: true },
+
+    brandNanoId: { type: String, required: true },
     workspaceNanoId: { type: String, required: true },
 
     name: { type: String, required: true },
