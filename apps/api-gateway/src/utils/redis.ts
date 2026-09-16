@@ -1,4 +1,5 @@
-import { Response } from "express";
+import { createHash, randomBytes } from "node:crypto";
+import { Request, Response } from "express";
 import Redis from "ioredis";
 import {
   GATEWAY_HEADER_PERMISSION,
@@ -111,6 +112,113 @@ export async function removeUserSession(deviceId: string) {
   await client.del(getUserSessionKey(deviceId));
 }
 
+const HANDOFF_KEY_PREFIX = "auth-handoff:";
+const HANDOFF_TTL = 30;
+const getHandoffKey = (token: string) =>
+  `${HANDOFF_KEY_PREFIX}${createHash("sha256").update(token).digest("hex")}`;
+
+/**
+ * Creates a short-lived, one-time handoff token and stores its hash in redis.
+ * Returns the raw token to hand to the client.
+ */
+export async function createHandoffToken(
+  parentDeviceId: string,
+  workspaceId: string,
+) {
+  const token = randomBytes(32).toString("hex");
+  const key = getHandoffKey(token);
+
+  await client
+    .pipeline()
+    .hset(key, { parentDeviceId, workspaceId })
+    .expire(key, HANDOFF_TTL)
+    .exec();
+
+  return token;
+}
+
+/**
+ * Atomically reads and deletes the handoff token. Returns null if it is
+ * missing, expired, or already used.
+ */
+export async function consumeHandoffToken(token: string) {
+  const key = getHandoffKey(token);
+
+  const results = await client.multi().hgetall(key).del(key).exec();
+  const data = results?.[0]?.[1] as Record<string, string> | undefined;
+
+  if (!data?.parentDeviceId || !data.workspaceId) {
+    return null;
+  }
+
+  return { parentDeviceId: data.parentDeviceId, workspaceId: data.workspaceId };
+}
+
+// Workspace session: one per device, keyed by the parent deviceId.
+// No TTL on purpose: it is only valid while the parent session exists.
+const WORKSPACE_SESSION_KEY_PREFIX = "workspaceSession:";
+export const WORKSPACE_COOKIE_NAME = "workspaceSession";
+const getWorkspaceSessionKey = (deviceId: string) =>
+  `${WORKSPACE_SESSION_KEY_PREFIX}${deviceId}`;
+
+export async function storeWorkspaceSession(
+  deviceId: string,
+  workspaceId: string,
+) {
+  await client.set(getWorkspaceSessionKey(deviceId), workspaceId);
+}
+
+export async function getWorkspaceSession(deviceId: string) {
+  return client.get(getWorkspaceSessionKey(deviceId));
+}
+
+export async function removeWorkspaceSession(deviceId: string) {
+  await client.del(getWorkspaceSessionKey(deviceId));
+}
+
+/** Root domain carries the parent cookie; workspace domains carry the workspace cookie. */
+export const getDeviceIdFromCookies = (cookies: Record<string, string> = {}) =>
+  cookies[SESSION_COOKIE_NAME] ?? cookies[WORKSPACE_COOKIE_NAME];
+
+/** Workspace id from a company.<id>.<root> host, or null on the root host. */
+export const getHostWorkspaceId = (hostname: string) => {
+  const [prefix, id, ...rest] = hostname.split(".");
+  return prefix === "company" && id && rest.length ? id : null;
+};
+
+/**
+ * Resolves the authenticated session from whichever cookie the domain has.
+ * On a workspace host (or with only the workspace cookie), the session is only
+ * honoured while workspaceSession:{deviceId} matches both the parent's selected
+ * workspace and the workspace in the host name.
+ */
+export async function resolveSession(req: Request) {
+  const cookies = req.cookies ?? {};
+  const deviceId = getDeviceIdFromCookies(cookies);
+
+  if (!deviceId) return null;
+
+  const session = await getUserSession(deviceId);
+
+  if (!session) return null;
+
+  const hostWorkspaceId = getHostWorkspaceId(req.hostname);
+
+  if (hostWorkspaceId || !cookies[SESSION_COOKIE_NAME]) {
+    const workspaceId = await getWorkspaceSession(deviceId);
+
+    if (!workspaceId || workspaceId !== session[GATEWAY_HEADER_WORKSPACE_ID]) {
+      return null;
+    }
+
+    if (hostWorkspaceId && hostWorkspaceId !== workspaceId) {
+      return null;
+    }
+  }
+
+  return { deviceId, session };
+}
+
 const cookieOptions = () => {
   const isProduction = process.env.ENVIRONMENT?.toLowerCase() === "production";
 
@@ -135,4 +243,12 @@ export const setSessionCookie = (
 
 export const clearSessionCookie = (res: Response) => {
   res.clearCookie(SESSION_COOKIE_NAME, cookieOptions());
+};
+
+export const setWorkspaceCookie = (res: Response, deviceId: string) => {
+  res.cookie(WORKSPACE_COOKIE_NAME, deviceId, cookieOptions());
+};
+
+export const clearWorkspaceCookie = (res: Response) => {
+  res.clearCookie(WORKSPACE_COOKIE_NAME, cookieOptions());
 };

@@ -9,7 +9,7 @@ import {
 } from "packages";
 
 import { isPublic } from "@src/auth/publicRoutes";
-import { getUserSession } from "@src/utils/redis";
+import { resolveSession } from "@src/utils/redis";
 import { createGatewayToken } from "@src/utils/gatewayToken";
 
 export const authGate = asyncErrorHandler(
@@ -23,17 +23,13 @@ export const authGate = asyncErrorHandler(
 
     if (isPublic(req.method, path)) return next();
 
-    const deviceId = req.cookies?.deviceId;
+    const resolved = await resolveSession(req);
 
-    if (!deviceId) {
-      throw new OperationalError(401, "Not authenticated");
-    }
-
-    const session = await getUserSession(deviceId);
-
-    if (!session || !session.userId) {
+    if (!resolved) {
       throw new OperationalError(401, "Session expired");
     }
+
+    const { session } = resolved;
 
     req.headers[GATEWAY_HEADER_USER_ID] = session.userId;
 

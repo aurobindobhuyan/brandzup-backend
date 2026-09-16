@@ -19,10 +19,7 @@ export const login = async ({
   email: string;
   password: string;
 }): Promise<{
-  _id: string;
-  name: string;
-  email: string;
-  profilePic: string;
+  userId: string;
 }> => {
   const findUser = await User.findOne({ email }).lean().exec();
 
@@ -41,7 +38,7 @@ export const login = async ({
     throw new OperationalError(400, "Invalid email or password");
   }
 
-  return getPublicUser(findUser);
+  return { userId: findUser._id.toString() };
 };
 
 export const register = async ({
