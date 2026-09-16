@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { Response } from "express";
+import { Request, Response } from "express";
 import Redis from "ioredis";
 import {
   GATEWAY_HEADER_PERMISSION,
@@ -180,12 +180,20 @@ export async function removeWorkspaceSession(deviceId: string) {
 export const getDeviceIdFromCookies = (cookies: Record<string, string> = {}) =>
   cookies[SESSION_COOKIE_NAME] ?? cookies[WORKSPACE_COOKIE_NAME];
 
+/** Workspace id from a company.<id>.<root> host, or null on the root host. */
+export const getHostWorkspaceId = (hostname: string) => {
+  const [prefix, id, ...rest] = hostname.split(".");
+  return prefix === "company" && id && rest.length ? id : null;
+};
+
 /**
  * Resolves the authenticated session from whichever cookie the domain has.
- * A workspace cookie is only honoured while workspaceSession:{deviceId}
- * still points at the parent's selected workspace.
+ * On a workspace host (or with only the workspace cookie), the session is only
+ * honoured while workspaceSession:{deviceId} matches both the parent's selected
+ * workspace and the workspace in the host name.
  */
-export async function resolveSession(cookies: Record<string, string> = {}) {
+export async function resolveSession(req: Request) {
+  const cookies = req.cookies ?? {};
   const deviceId = getDeviceIdFromCookies(cookies);
 
   if (!deviceId) return null;
@@ -194,10 +202,16 @@ export async function resolveSession(cookies: Record<string, string> = {}) {
 
   if (!session) return null;
 
-  if (!cookies[SESSION_COOKIE_NAME]) {
+  const hostWorkspaceId = getHostWorkspaceId(req.hostname);
+
+  if (hostWorkspaceId || !cookies[SESSION_COOKIE_NAME]) {
     const workspaceId = await getWorkspaceSession(deviceId);
 
     if (!workspaceId || workspaceId !== session[GATEWAY_HEADER_WORKSPACE_ID]) {
+      return null;
+    }
+
+    if (hostWorkspaceId && hostWorkspaceId !== workspaceId) {
       return null;
     }
   }

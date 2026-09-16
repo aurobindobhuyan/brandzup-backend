@@ -23,7 +23,7 @@ export const authGate = asyncErrorHandler(
 
     if (isPublic(req.method, path)) return next();
 
-    const resolved = await resolveSession(req.cookies);
+    const resolved = await resolveSession(req);
 
     if (!resolved) {
       throw new OperationalError(401, "Session expired");

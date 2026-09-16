@@ -16,6 +16,7 @@ import {
   consumeHandoffToken,
   createHandoffToken,
   getDeviceIdFromCookies,
+  getHostWorkspaceId,
   getUserSession,
   removeUserSession,
   removeWorkspaceSession,
@@ -64,7 +65,7 @@ export const login = asyncErrorHandler(async (req: Request, res: Response) => {
 });
 
 export const me = asyncErrorHandler(async (req: Request, res: Response) => {
-  const resolved = await resolveSession(req.cookies);
+  const resolved = await resolveSession(req);
 
   if (resolved === null) {
     return errorResponse(res, "Session Expired", 401);
@@ -186,6 +187,11 @@ export const consumeToken = asyncErrorHandler(
     }
 
     const { parentDeviceId, workspaceId } = handoff;
+
+    // The token must be consumed on the workspace host it was issued for.
+    if (getHostWorkspaceId(req.hostname) !== workspaceId) {
+      return errorResponse(res, "Invalid or expired token", 401);
+    }
     const session = await getUserSession(parentDeviceId);
 
     if (session === null) {
